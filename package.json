@@ -1,0 +1,22 @@
+{
+  "name": "college-erp-system",
+  "version": "1.0.0",
+  "description": "Full Stack College ERP System (Admin, Faculty, Student) with Attendance, Marks, Departments, and Notices",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "seed": "npm --prefix backend run seed",
+    "build:frontend": "npm --prefix frontend run build"
+  },
+  "keywords": [
+    "college-erp",
+    "attendance-management",
+    "marks-management",
+    "student-portal",
+    "faculty-portal",
+    "admin-portal",
+    "full-stack"
+  ],
+  "author": "AcademiaPro Team",
+  "license": "ISC"
+}

@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Timetable | AcademiaPro ERP</title>
+<link rel="stylesheet" href="/erp-static/common.css"></head><body>
+<script src="/erp-static/common.js"></script>
+<script>
+chrome('Weekly Timetable');
+const DAYS=['','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+let OPT=null,rows=[];
+function grid(list,mgr){
+  let h='<div class="scroll"><div class="tt">';
+  for(let d=1;d<=6;d++){
+    const day=list.filter(s=>s.dayOfWeek===d);
+    h+=`<div><h3>${DAYS[d]}</h3>`+(day.map(s=>`<div class="slot"><b>${esc(s.startTime)}–${esc(s.endTime)}</b><br>${esc(s.subject.name)} <small>${esc(s.subject.code)}${s.room?' · Room '+esc(s.room):''}</small><small>${esc(s.facultyName||'')}${s.department?' · '+esc(s.department)+' S'+s.semester+'-'+esc(s.section):''}</small>${mgr?`<button class="del noprint" style="margin-top:4px;padding:2px 8px" onclick="del(${s.id})">Remove</button>`:''}</div>`).join('')||'<small style="color:#9ca3af">No classes</small>')+'</div>';
+  }
+  return h+'</div></div>';
+}
+async function boot(){
+  if(!showAuthState())return;
+  try{
+    if(has('timetable.manage')) await manager(); else await mine();
+  }catch(e){toast(e.message,1)}
+}
+async function mine(){
+  const d=await api('/timetable/my');
+  $('#app').innerHTML=`<div class="card"><h2>My weekly timetable <button class="sec noprint" style="float:right" onclick="print()">Print</button></h2>${d.data.length?grid(d.data,false):'No timetable has been published for you yet.'}</div>`;
+}
+async function manager(){
+  OPT=await api('/timetable/options');
+  const dopt=OPT.departments.map(d=>`<option value="${d.id}">${esc(d.code)}</option>`).join('');
+  $('#app').innerHTML=`<div class="card noprint"><h2>View class timetable</h2><div class="row">
+   <label>Department<select id="vd">${dopt}</select></label><label>Semester<input id="vs" type="number" min="1" max="12" value="4" style="width:80px"></label>
+   <label>Section<input id="vc" value="A" style="width:70px"></label><button onclick="load()">Show</button> <button class="sec" onclick="print()">Print</button></div></div>
+  <div class="card"><h2 id="ttl">Timetable</h2><div id="tt"></div></div>
+  <div class="card noprint"><h2>Add class</h2><div class="row">
+   <label>Day<select id="ad">${DAYS.slice(1).map((n,i)=>`<option value="${i+1}">${n}</option>`).join('')}</select></label>
+   <label>Start<input id="as" type="time" value="09:00"></label><label>End<input id="ae" type="time" value="09:50"></label>
+   <label>Subject<select id="asub"></select></label><label>Faculty<select id="af"></select></label>
+   <label>Room<input id="ar" placeholder="LH-101" style="width:100px"></label><button onclick="add()">Add</button></div>
+   <small style="color:#6b7280">Adds to the department / semester / section selected above. Clashes for faculty, room or class are rejected.</small></div>`;
+  $('#vd').onchange=$('#vs').onchange=fillSel;fillSel();load();
+}
+function fillSel(){
+  const dep=parseInt($('#vd').value),sem=parseInt($('#vs').value);
+  $('#asub').innerHTML=OPT.subjects.filter(s=>s.departmentId===dep&&(!sem||s.semester===sem)).map(s=>`<option value="${s.id}">${esc(s.code)} – ${esc(s.name)}</option>`).join('')||'<option value="">No subjects for this class</option>';
+  $('#af').innerHTML=OPT.faculty.filter(f=>f.departmentId===dep).map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('')||OPT.faculty.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
+}
+async function load(){
+  try{const q=`departmentId=${$('#vd').value}&semester=${$('#vs').value}&section=${encodeURIComponent($('#vc').value)}`;
+  const d=await api('/timetable?'+q);$('#ttl').textContent=`Timetable – ${$('#vd').selectedOptions[0].text} Semester ${$('#vs').value} Section ${$('#vc').value.toUpperCase()}`;
+  $('#tt').innerHTML=grid(d.data,true)}catch(e){toast(e.message,1)}
+}
+async function add(){
+  try{await api('/timetable',{method:'POST',body:{departmentId:$('#vd').value,semester:$('#vs').value,section:$('#vc').value,dayOfWeek:$('#ad').value,startTime:$('#as').value,endTime:$('#ae').value,subjectId:$('#asub').value,facultyId:$('#af').value,room:$('#ar').value}});toast('Class added');load()}catch(e){toast(e.message,1)}
+}
+async function del(id){if(!confirm('Remove this class?'))return;try{await api('/timetable/'+id,{method:'DELETE'});load()}catch(e){toast(e.message,1)}}
+boot();
+</script></body></html>

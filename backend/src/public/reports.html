@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Summary Report | AcademiaPro ERP</title>
+<link rel="stylesheet" href="/erp-static/common.css"></head><body>
+<script src="/erp-static/common.js"></script>
+<script>
+chrome('Admin Summary Report');
+const bar=p=>`<div class="bar"><i style="width:${Math.min(p,100)}%"></i></div>`;
+async function boot(){
+  if(!showAuthState())return;
+  if(!has('reports.view')){$('#app').innerHTML='<div class="card">You do not have access to reports.</div>';return}
+  try{
+    const d=await api('/reports/summary'),t=d.totals,a=d.attendance,m=d.academics,f=d.fees;
+    $('#app').innerHTML=`<div class="card"><h2>Overview <button class="sec noprint" style="float:right" onclick="print()">Print / Save PDF</button></h2>
+    <div class="stats"><div class="stat">Students<b>${t.students}</b></div><div class="stat">Faculty<b>${t.faculty}</b></div><div class="stat">Departments<b>${t.departments}</b></div><div class="stat">Subjects<b>${t.subjects}</b></div></div>
+    <p style="color:#6b7280;margin:10px 0 0">Generated ${new Date(d.generatedAt).toLocaleString()}</p></div>
+    <div class="card"><h2>Attendance</h2><div class="stats"><div class="stat">Overall<b>${a.overallPercent}%</b></div><div class="stat">Sessions held<b>${a.sessionsConducted}</b></div><div class="stat">Below ${a.shortageLimit}%<b>${a.studentsInShortage}</b>students</div></div></div>
+    <div class="card"><h2>Academics</h2><div class="stats"><div class="stat">Marks recorded<b>${m.marksRecorded}</b></div><div class="stat">Average score<b>${m.avgPercent}%</b></div><div class="stat">Pass rate<b>${m.passPercent}%</b></div></div></div>
+    <div class="card"><h2>Fees</h2><div class="stats"><div class="stat">Expected<b>${money(f.expected)}</b></div><div class="stat">Collected<b>${money(f.collected)}</b></div><div class="stat">Outstanding<b>${money(f.outstanding)}</b></div><div class="stat">Collected<b>${f.collectionPercent}%</b></div></div></div>
+    <div class="card"><h2>By department</h2><div class="scroll"><table><tr><th>Department</th><th>Students</th><th>Faculty</th><th>Attendance</th><th>Avg marks</th><th>Pass rate</th></tr>
+    ${d.byDepartment.map(x=>`<tr><td><b>${esc(x.code)}</b><br><small>${esc(x.name)}</small></td><td>${x.students}</td><td>${x.faculty}</td><td>${x.attendancePercent}%${bar(x.attendancePercent)}</td><td>${x.avgMarksPercent}%</td><td>${x.passPercent}%</td></tr>`).join('')}</table></div></div>
+    <div class="card"><h2>Recent notices</h2>${d.recentNotices.length?'<table>'+d.recentNotices.map(n=>`<tr><td>${esc(n.title)}</td><td>${esc(n.category)}</td><td>${new Date(n.createdAt).toLocaleDateString()}</td></tr>`).join('')+'</table>':'No notices.'}</div>`;
+  }catch(e){toast(e.message,1)}
+}
+boot();
+</script></body></html>

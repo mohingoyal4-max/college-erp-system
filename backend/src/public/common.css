@@ -1,0 +1,15 @@
+:root{--bg:#f4f6f8;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#e5e7eb;--pri:#2f855a;--bad:#c53030}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#111827;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header nav a{color:#9ae6b4;margin:0 10px;text-decoration:none}header nav a:hover{text-decoration:underline}
+main{max-width:1100px;margin:20px auto;padding:0 16px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px}
+h2{margin:0 0 12px;font-size:17px}table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:14px;vertical-align:top}th{color:var(--mute);font-weight:600}
+input,select,button{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px}button{background:var(--pri);color:#fff;border:0;cursor:pointer}button.sec{background:#e5e7eb;color:var(--ink)}button.del{background:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.row label{display:flex;flex-direction:column;font-size:12px;color:var(--mute);gap:3px}
+.tag{padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}.PAID{background:#c6f6d5;color:#22543d}.PARTIAL{background:#feebc8;color:#7b341e}.PENDING,.NO_FEES{background:#e2e8f0}.OVERDUE{background:#fed7d7;color:#742a2a}
+.stats{display:flex;gap:12px;flex-wrap:wrap}.stat{flex:1;min-width:150px;background:var(--bg);border-radius:8px;padding:10px}.stat b{display:block;font-size:22px}
+#msg{position:fixed;bottom:16px;right:16px;padding:10px 14px;border-radius:8px;color:#fff;display:none}.scroll{overflow-x:auto}
+.bar{background:#e5e7eb;border-radius:99px;height:8px;min-width:80px}.bar i{display:block;height:8px;border-radius:99px;background:var(--pri)}
+.tt{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:8px;min-width:820px}.tt h3{margin:0 0 6px;font-size:13px;color:var(--mute)}
+.slot{background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:8px;margin-bottom:6px;font-size:13px}.slot small{color:var(--mute);display:block}
+@media print{header,.noprint{display:none}body{background:#fff}.card{border:0}}

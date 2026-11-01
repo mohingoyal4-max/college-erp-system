@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fees | AcademiaPro ERP</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#1f2937;--mute:#6b7280;--line:#e5e7eb;--pri:#2f855a;--bad:#c53030;--warn:#b7791f}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#111827;color:#fff;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+main{max-width:1000px;margin:20px auto;padding:0 16px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px}
+h2{margin:0 0 12px;font-size:17px}table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}th{color:var(--mute);font-weight:600}
+input,select,button{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px}button{background:var(--pri);color:#fff;border:0;cursor:pointer}button.sec{background:#e5e7eb;color:var(--ink)}button.del{background:var(--bad)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}.row label{display:flex;flex-direction:column;font-size:12px;color:var(--mute);gap:3px}
+.tag{padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}.PAID{background:#c6f6d5;color:#22543d}.PARTIAL{background:#feebc8;color:#7b341e}.PENDING,.NO_FEES{background:#e2e8f0}.OVERDUE{background:#fed7d7;color:#742a2a}
+.stats{display:flex;gap:12px;flex-wrap:wrap}.stat{flex:1;min-width:150px;background:var(--bg);border-radius:8px;padding:10px}.stat b{display:block;font-size:20px}
+#msg{position:fixed;bottom:16px;right:16px;padding:10px 14px;border-radius:8px;color:#fff;display:none}
+.scroll{overflow-x:auto}
+</style></head><body>
+<header><strong>AcademiaPro · Fees</strong><nav><a href="/fees" style="color:#9ae6b4;margin:0 8px">Fees</a><a href="/timetable" style="color:#9ae6b4;margin:0 8px">Timetable</a><a href="/reports" style="color:#9ae6b4;margin:0 8px">Reports</a></nav><span id="who"></span></header>
+<main>
+<div id="login" class="card" style="max-width:380px;margin:60px auto;display:none">
+<h2>Sign in</h2><div class="row" style="flex-direction:column;align-items:stretch">
+<input id="em" placeholder="Email" autocomplete="username"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><button onclick="login()">Sign in</button></div></div>
+<div id="app" style="display:none"></div>
+</main><div id="msg"></div>
+<script>
+const $=s=>document.querySelector(s);
+const money=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+let T=null,U=null;try{T=localStorage.getItem('fees_token')||localStorage.getItem('erp_token');U=JSON.parse(localStorage.getItem('fees_user')||localStorage.getItem('erp_user')||'null')}catch(e){}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(t,bad){const m=$('#msg');m.textContent=t;m.style.background=bad?'#c53030':'#2f855a';m.style.display='block';setTimeout(()=>m.style.display='none',3500)}
+async function api(path,opt={}){
+  const r=await fetch('/api/fees'+path,{...opt,headers:{'Content-Type':'application/json',Authorization:'Bearer '+T},body:opt.body?JSON.stringify(opt.body):undefined});
+  if(r.status===401){logout();throw new Error('Session expired')}
+  const j=await r.json().catch(()=>({success:false,message:'Bad response'}));
+  if(!j.success)throw new Error(j.message||'Request failed');return j}
+async function login(){
+  try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('#em').value,password:$('#pw').value})});
+  const j=await r.json();if(!j.success)throw new Error(j.message);T=j.token;U=j.user;
+  try{localStorage.setItem('fees_token',T);localStorage.setItem('fees_user',JSON.stringify(U))}catch(e){}start()}catch(e){toast(e.message,1)}}
+function logout(){T=U=null;try{localStorage.removeItem('fees_token');localStorage.removeItem('fees_user')}catch(e){}start()}
+const manager=()=>U&&(U.role==='ADMIN'||(U.permissions||[]).includes('fees.manage'));
+function start(){
+  $('#login').style.display=T?'none':'block';$('#app').style.display=T?'block':'none';
+  $('#who').innerHTML=U?esc(U.name)+' ('+esc(U.role)+') <button class="sec" onclick="logout()">Logout</button>':'';
+  if(!T)return;
+  if(manager())adminView();else if(U.role==='STUDENT')studentView();else $('#app').innerHTML='<div class="card">You do not have access to fees.</div>'}
+function feeTable(items){return '<div class="scroll"><table><tr><th>Sem</th><th>Fee</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th></tr>'+
+ items.map(i=>`<tr><td>${i.semester}</td><td>${esc(i.feeType)}</td><td>${money(i.amount)}</td><td>${money(i.paid)}</td><td>${money(i.balance)}</td><td>${esc(i.dueDate||'-')}</td><td><span class="tag ${i.status}">${i.status}</span></td></tr>`).join('')+'</table></div>'}
+function stats(s){return `<div class="stats"><div class="stat">Total fee<b>${money(s.totalFee)}</b></div><div class="stat">Paid<b>${money(s.totalPaid)}</b></div><div class="stat">Outstanding<b>${money(s.totalBalance)}</b></div></div>`}
+async function studentView(){
+  try{const d=await api('/my');
+  const rec=d.items.flatMap(i=>i.payments.map(p=>({...p,feeType:i.feeType})));
+  $('#app').innerHTML=`<div class="card"><h2>${esc(d.student.name)} · ${esc(d.student.rollNo)} · Sem ${d.student.semester}</h2>${stats(d.summary)}</div>
+  <div class="card"><h2>My fees</h2>${d.items.length?feeTable(d.items):'No fees have been set for your class yet.'}</div>
+  <div class="card"><h2>Payment receipts</h2>${rec.length?'<table><tr><th>Receipt</th><th>Fee</th><th>Amount</th><th>Method</th><th>Date</th></tr>'+rec.map(p=>`<tr><td>${esc(p.receiptNo)}</td><td>${esc(p.feeType)}</td><td>${money(p.amountPaid)}</td><td>${esc(p.method)}</td><td>${new Date(p.paidAt).toLocaleDateString()}</td></tr>`).join('')+'</table>':'No payments yet.'}</div>`}catch(e){toast(e.message,1)}}
+let DEPTS=[];
+async function adminView(){
+  try{
+  const dr=await fetch('/api/departments',{headers:{Authorization:'Bearer '+T}}).then(r=>r.json());DEPTS=dr.data||[];
+  $('#app').innerHTML=`<div class="card"><h2>Collection summary</h2><div id="sum">Loading…</div></div>
+  <div class="card"><h2>Add fee</h2><div class="row">
+   <label>Department<select id="fd">${DEPTS.map(d=>`<option value="${d.id}">${esc(d.code)}</option>`).join('')}</select></label>
+   <label>Semester<input id="fs" type="number" min="1" max="12" value="1" style="width:80px"></label>
+   <label>Fee type<input id="ft" placeholder="TUITION" style="width:130px"></label>
+   <label>Amount<input id="fa" type="number" min="1" style="width:110px"></label>
+   <label>Due date<input id="fdue" type="date"></label>
+   <label>Year<input id="fy" value="2025-2026" style="width:110px"></label>
+   <button onclick="addFee()">Add</button></div></div>
+  <div class="card"><h2>Fee status report <button class="sec" style="float:right" onclick="print()">Print</button></h2>
+   <div class="row"><label>Status<select id="rs" onchange="loadReport()"><option value="">All</option><option>PAID</option><option>PARTIAL</option><option>PENDING</option><option>OVERDUE</option></select></label>
+   <label>Department<select id="rd" onchange="loadReport()"><option value="">All</option>${DEPTS.map(d=>`<option value="${d.id}">${esc(d.code)}</option>`).join('')}</select></label></div>
+   <div id="rep" style="margin-top:12px">Loading…</div></div>
+  <div class="card"><h2>Fee structure</h2><div id="st"></div></div>
+  <div class="card"><h2>Record payment</h2><div class="row"><label>Student roll no<input id="rn" placeholder="e.g. CSE2023001"></label><button onclick="lookup()">Find</button></div><div id="stu" style="margin-top:12px"></div></div>`;
+  loadSummary();loadStructures();loadReport()}catch(e){toast(e.message,1)}}
+async function loadSummary(){try{const d=await api('/summary');
+  $('#sum').innerHTML=`<div class="stats"><div class="stat">Expected<b>${money(d.totals.expected)}</b></div><div class="stat">Collected<b>${money(d.totals.collected)}</b></div><div class="stat">Outstanding<b>${money(d.totals.outstanding)}</b></div></div>`}catch(e){toast(e.message,1)}}
+async function loadStructures(){try{const d=await api('/structures');
+  $('#st').innerHTML=d.data.length?'<div class="scroll"><table><tr><th>Dept</th><th>Sem</th><th>Fee</th><th>Amount</th><th>Due</th><th>Year</th><th></th></tr>'+d.data.map(f=>`<tr><td>${esc(f.department.code)}</td><td>${f.semester}</td><td>${esc(f.feeType)}</td><td>${money(f.amount)}</td><td>${esc(f.dueDate||'-')}</td><td>${esc(f.academicYear)}</td><td><button class="del" onclick="delFee(${f.id})">Delete</button></td></tr>`).join('')+'</table></div>':'No fees yet. Add one above.'}catch(e){toast(e.message,1)}}
+async function loadReport(){try{
+  const q=new URLSearchParams();if($('#rs').value)q.set('status',$('#rs').value);if($('#rd').value)q.set('departmentId',$('#rd').value);
+  const d=await api('/report?'+q);
+  $('#rep').innerHTML=(d.data.length?'<div class="scroll"><table><tr><th>Roll no</th><th>Name</th><th>Dept</th><th>Sem</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr>'+d.data.map(r=>`<tr><td>${esc(r.rollNo)}</td><td>${esc(r.name)}</td><td>${esc(r.department)}</td><td>${r.semester}</td><td>${money(r.totalFee)}</td><td>${money(r.paid)}</td><td>${money(r.balance)}</td><td><span class="tag ${r.status}">${r.status}</span></td></tr>`).join('')+'</table></div>':'No students match.')}catch(e){toast(e.message,1)}}
+async function addFee(){try{await api('/structures',{method:'POST',body:{departmentId:$('#fd').value,semester:$('#fs').value,feeType:$('#ft').value,amount:$('#fa').value,dueDate:$('#fdue').value,academicYear:$('#fy').value}});toast('Fee added');loadStructures();loadSummary()}catch(e){toast(e.message,1)}}
+async function delFee(id){if(!confirm('Delete this fee?'))return;try{await api('/structures/'+id,{method:'DELETE'});toast('Deleted');loadStructures();loadSummary()}catch(e){toast(e.message,1)}}
+let CUR=null;
+async function lookup(){try{CUR=await api('/lookup?rollNo='+encodeURIComponent($('#rn').value));showStudent()}catch(e){toast(e.message,1)}}
+function showStudent(){const d=CUR,open=d.items.filter(i=>i.balance>0);
+  $('#stu').innerHTML=`<strong>${esc(d.student.name)}</strong> · ${esc(d.student.department)} · Sem ${d.student.semester}${stats(d.summary)}<div style="margin-top:10px">${feeTable(d.items)}</div>`+
+  (open.length?`<div class="row" style="margin-top:12px"><label>Fee<select id="pf">${open.map(i=>`<option value="${i.id}">${esc(i.feeType)} (Sem ${i.semester}) – due ${money(i.balance)}</option>`).join('')}</select></label>
+   <label>Amount<input id="pa" type="number" min="1"></label><label>Method<select id="pm"><option>CASH</option><option>UPI</option><option>CARD</option><option>BANK_TRANSFER</option><option>CHEQUE</option></select></label>
+   <label>Reference<input id="pr" placeholder="Txn / cheque no"></label><button onclick="pay()">Record payment</button></div>`:'<p>No outstanding dues.</p>')}
+async function pay(){try{const r=await api('/payments',{method:'POST',body:{studentId:CUR.student.id,feeStructureId:$('#pf').value,amountPaid:$('#pa').value,method:$('#pm').value,reference:$('#pr').value}});
+  toast(r.message);CUR=await api('/student/'+CUR.student.id);showStudent();loadSummary()}catch(e){toast(e.message,1)}}
+start();
+</script></body></html>
